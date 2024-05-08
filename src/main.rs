@@ -26,7 +26,7 @@ fn game_loop(mut game_manager: game::GameManager, players: &Vec<Player>) {
             let input = if player.p_type == PlayerType::terminal {
                 ask_terminal()
             } else {
-                ask_bot()
+                ask_bot(game_manager.clone(), &player)
             };
             match input_handler(input) {
                 Ok(input) => match input {
@@ -36,7 +36,7 @@ fn game_loop(mut game_manager: game::GameManager, players: &Vec<Player>) {
                             game_state = GameState::Closing
                         }
                     }
-                    Command::ChooseCell(coord) => match game_manager.make_move(coord, player.id) {
+                    Command::ChooseCell(coord) => match game_manager.make_move(coord, *player, move_counter) {
                         Ok(_) => break,
                         Err(err) => println!("{:?}", err),
                     },
@@ -80,9 +80,14 @@ fn janky_bot() -> (usize, usize) {
         .to_owned();
     return coord;
 }
+fn deeper(mut game_manager: game::GameManager, player: &Player) -> (usize, usize){
+    let best_move: (usize, usize) = (0,0);
+    return best_move;
+}
 
-fn ask_bot() -> String {
-    let moove = janky_bot();
+fn ask_bot(game_manager: game::GameManager, player: &Player) -> String {
+    // let moove = janky_bot();
+    let moove = deeper(game_manager, player);
     return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
 }
 fn ask_terminal() -> String {

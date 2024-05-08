@@ -1,4 +1,4 @@
-use std::{char, vec};
+use std::{char, usize, vec};
 #[derive(Debug)]
 pub enum MakeMoveErrors {
     OutOfBounds,
@@ -9,13 +9,24 @@ pub enum Cell {
     Empty,
     Filed(usize),
 }
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Copy)]
+pub struct Move {
+    coord: (usize, usize),
+    player: Player,
+    id: usize,
+}
+impl Move {
+    fn new(coord: (usize, usize), player: Player, id: usize) -> Self {
+        Move { coord, player, id }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum PlayerType {
     bot,
     terminal,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Player {
     pub id: usize,
     skin: char,
@@ -43,12 +54,13 @@ pub enum WinDraw {
     Draw,
     Noting,
 }
+#[derive(Clone)]
 struct Board {
     position: Vec<Vec<Cell>>,
     x: usize,
     y: usize,
     player_count: usize,
-    move_history: Vec<(Player, (usize, usize))>,
+    move_history: Vec<(Move)>,
 }
 impl Board {
     fn new(x: usize, y: usize, player_count: usize) -> Self {
@@ -77,22 +89,23 @@ impl Board {
         }
         return Ok(());
     }
-    fn make_move(&mut self, coord: (usize, usize), player_id: usize) {
-        if coord.0 >= self.y || coord.1 >= self.x {
+    fn make_move(&mut self, moove: Move) {
+        if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
             panic!("coord out of bounds");
         }
         let mut new_position = vec![];
         for row in 0..self.position.len() {
             let mut new_row = vec![];
             for cell in 0..self.position[row].len() {
-                if row == coord.0 && cell == coord.1 {
-                    new_row.push(Cell::Filed(player_id))
+                if row == moove.coord.0 && cell == moove.coord.1 {
+                    new_row.push(Cell::Filed(moove.player.id))
                 } else {
                     new_row.push(self.position[row][cell])
                 }
             }
             new_position.push(new_row);
         }
+        self.move_history.push(moove);
         self.position = new_position;
     }
 
@@ -224,7 +237,7 @@ fn devide_position(position: &Vec<Vec<Cell>>) -> Vec<Vec<Vec<Cell>>> {
     //0000    1000
     return vec![first, second, third, fourth];
 }
-
+#[derive(Clone)]
 pub struct GameManager {
     board: Board,
     players: Vec<Player>,
@@ -259,11 +272,12 @@ impl GameManager {
     pub fn make_move(
         &mut self,
         coord: (usize, usize),
-        player_id: usize,
+        player: Player,
+        move_number:usize
     ) -> Result<(), MakeMoveErrors> {
         match self.board.validate_move(coord) {
             Ok(_) => {
-                self.board.make_move(coord, player_id);
+                self.board.make_move(Move::new(coord, player, move_number));
                 Ok(())
             }
             Err(error) => Err(error),
@@ -277,6 +291,17 @@ impl GameManager {
             return WinDraw::Draw;
         }
         return WinDraw::Noting;
+    }
+    pub fn get_possible_moves_coord(&self) -> Vec<(usize, usize)> {
+        let mut moves = vec![];
+        for i in 0..self.board.y {
+            for j in 0..self.board.x {
+                if self.board.validate_move((i, j)).is_ok() {
+                    moves.push((i, j))
+                }
+            }
+        }
+        return moves;
     }
 }
 
@@ -661,7 +686,7 @@ mod position {
 
 #[cfg(test)]
 mod board {
-    use crate::game::Cell;
+    use crate::game::{Cell, Move, Player};
 
     use super::Board;
 
@@ -673,7 +698,7 @@ mod board {
         let mut desired_pos = position3x3;
         for i in 0..3 {
             for j in 0..3 {
-                board.make_move((i, j), 1);
+                board.make_move(Move::new((i, j), Player::new(1, 'X'), 0));
                 desired_pos[i][j] = Cell::Filed(1);
 
                 assert_eq!(board.position, desired_pos);
