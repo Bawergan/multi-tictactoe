@@ -9,22 +9,33 @@ pub enum Cell {
     Empty,
     Filed(usize),
 }
-
-enum PlayerType{
-    bot, 
-    user
+#[derive(Clone, Debug, PartialEq)]
+pub enum PlayerType {
+    bot,
+    terminal,
 }
 
 #[derive(Clone, Debug)]
 pub struct Player {
     pub id: usize,
     skin: char,
-    type: PlayerType,
+    pub p_type: PlayerType,
 }
 
 impl Player {
-    pub fn new(id: usize, skin: char, is_bot: bool) -> Self {
-        Player { id, skin, type: if is_bot {PlayerType::bot} else {PlayerType::user}}
+    pub fn new(id: usize, skin: char) -> Self {
+        Player {
+            id,
+            skin,
+            p_type: PlayerType::terminal,
+        }
+    }
+    pub fn new_bot(id: usize, skin: char) -> Self {
+        Player {
+            id,
+            skin,
+            p_type: PlayerType::bot,
+        }
     }
 }
 pub enum WinDraw {

@@ -1,28 +1,12 @@
-use game::Player;
+use std::io;
+
+use game::{Player, PlayerType};
 use rand::seq::SliceRandom;
-use std::{any::Any, env::set_current_dir, fmt, io};
+
 mod game;
 
-fn janky_bot() -> String {
-    let a = ['A', 'B', 'C', 'D', 'E']
-        .choose(&mut rand::thread_rng())
-        .unwrap()
-        .to_owned()
-        .to_string();
-    let b = ['1', '2', '3', '4', '5']
-        .choose(&mut rand::thread_rng())
-        .unwrap()
-        .to_owned()
-        .to_string();
-    return a + &b;
-}
-
 fn main() {
-    let players = vec![
-        Player::new(1, 'X'),
-        Player::new(2, 'O'),
-        Player::new(3, '8'),
-    ];
+    let players = vec![Player::new(1, 'X'), Player::new_bot(2, 'O')];
     let game_manager = game::GameManager::new((4, 4), &players);
     game_loop(game_manager, &players);
 }
@@ -38,9 +22,13 @@ fn game_loop(mut game_manager: game::GameManager, players: &Vec<Player>) {
     loop {
         let player = &players[move_counter % players.len()];
         move_counter += 1;
-
         loop {
-            match input_handler(ask_terminal()) {
+            let input = if player.p_type == PlayerType::terminal {
+                ask_terminal()
+            } else {
+                ask_bot()
+            };
+            match input_handler(input) {
                 Ok(input) => match input {
                     Command::Exit => {
                         println!("Are you shure? The game is running!");
@@ -78,6 +66,24 @@ fn game_loop(mut game_manager: game::GameManager, players: &Vec<Player>) {
             game::WinDraw::Noting => {}
         }
     }
+}
+
+fn janky_bot() -> (usize, usize) {
+    let mut coord: (usize, usize) = (0, 0);
+    coord.0 = [0, 1, 2, 3]
+        .choose(&mut rand::thread_rng())
+        .unwrap()
+        .to_owned();
+    coord.1 = [0, 1, 2, 3]
+        .choose(&mut rand::thread_rng())
+        .unwrap()
+        .to_owned();
+    return coord;
+}
+
+fn ask_bot() -> String {
+    let moove = janky_bot();
+    return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
 }
 fn ask_terminal() -> String {
     let mut input = String::new();
