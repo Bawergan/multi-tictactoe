@@ -14,7 +14,12 @@ impl core::fmt::Display for Board {
                 }
             }
         }
-        writeln!(f, "  0123\n")?;
+        let a = (0..(self.x))
+            .collect::<Vec<_>>()
+            .iter()
+            .map(|v| v.to_string())
+            .collect::<String>();
+        writeln!(f, "  {}", a)?;
         for i in 0..board.len() {
             write!(f, "{i} ")?;
             for j in 0..board[i].len() {
@@ -26,8 +31,8 @@ impl core::fmt::Display for Board {
     }
 }
 #[derive(Debug)]
-pub enum GameError{
-    InvalidMove
+pub enum GameError {
+    InvalidMove,
 }
 
 #[derive(Clone)]
@@ -35,17 +40,15 @@ pub struct Board {
     position: Vec<Vec<Cell>>,
     pub x: usize,
     pub y: usize,
-    players: Vec<Player>,
     move_history: Vec<Move>,
 }
 
 impl Board {
-    pub fn new(x: usize, y: usize, players: Vec<Player>) -> Self {
+    pub fn new(x: usize, y: usize) -> Self {
         Board {
             position: vec![vec![Cell::Empty; x]; y],
             x,
             y,
-            players,
             move_history: vec![],
         }
     }
@@ -55,7 +58,7 @@ impl Board {
     pub fn check_player_for_win(&self, player: Player) -> bool {
         return check_rows_in_position(&self.position, 3, player)
             || check_columns_in_position(&self.position, 3, player)
-            || check_diags_in_position(&self.position, 3, player);
+            || check_diags_in_position_new(&self.position, 3, player);
     }
     pub fn is_valid_move(&self, moove: &Move) -> bool {
         if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
@@ -109,6 +112,48 @@ impl Board {
         }
         return true;
     }
+}
+
+fn check_diags_in_position_new(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
+    for i in 0..(position.len() + 1 - win_req) {
+        for j in 0..((position[i].len() + 1) / 2) {
+            let mut score = 0;
+            for k in 0..win_req {
+                if i + k >= position.len() || j + k >= position[i].len() {
+                    continue;
+                }
+                if position[i + k][j + k] == Cell::Filed(player) {
+                    println!("{score}");
+                    score += 1;
+                    if score == win_req {
+                        return true;
+                    }
+                    continue;
+                }
+                score = 0;
+            }
+        }
+    }
+    for i in 0..(position.len() + 1 - win_req) {
+        for j in ((position[i].len()) / 2)..position[i].len() {
+            let mut score = 0;
+            for k in 0..win_req {
+                if i + k >= position.len() || j < k {
+                    continue;
+                }
+                if position[i + k][j - k] == Cell::Filed(player) {
+                    println!("{score}");
+                    score += 1;
+                    if score == win_req {
+                        return true;
+                    }
+                    continue;
+                }
+                score = 0;
+            }
+        }
+    }
+    return false;
 }
 
 fn check_rows_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
@@ -565,8 +610,14 @@ mod check_player_for_win_modules {
                 vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
             ],
         ];
+        let mut counter = 0;
         for position in positions {
-            assert!(check_diags_in_position(&position, 3, p));
+            assert!(
+                check_diags_in_position_new(&position, 3, p),
+                "position {}",
+                counter
+            );
+            counter += 1;
         }
     }
 }
@@ -581,7 +632,7 @@ mod make_move_tests {
     fn fill_board_p_3x3() {
         let position3x3 = vec![vec![Cell::Empty; 3]; 3];
         let p = Player::new(1, 'X');
-        let mut board = Board::new(3, 3, vec![p]);
+        let mut board = Board::new(3, 3);
 
         let mut desired_pos = position3x3;
         for i in 0..3 {
