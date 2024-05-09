@@ -123,7 +123,6 @@ fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Pl
                     continue;
                 }
                 if position[i + k][j + k] == Cell::Filed(player) {
-                    println!("{score}");
                     score += 1;
                     if score == win_req {
                         return true;
@@ -142,7 +141,6 @@ fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Pl
                     continue;
                 }
                 if position[i + k][j - k] == Cell::Filed(player) {
-                    println!("{score}");
                     score += 1;
                     if score == win_req {
                         return true;

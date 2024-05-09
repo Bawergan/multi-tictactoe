@@ -1,6 +1,6 @@
 use crate::{
     board::{Board, GameError},
-    player::{self, Player, PlayerType},
+    player::{Player, PlayerType},
     r#move::Move,
     utils,
 };
@@ -88,8 +88,6 @@ impl Lobby {
         let mut board = Board::new(self.board_settings.0, self.board_settings.1);
         println!("game started");
         print!("{board}");
-
-        let mut game_state = GameState::Running;
         let mut move_counter = 0;
         loop {
             let player = self.players[move_counter % self.players.len()];
@@ -160,12 +158,12 @@ fn janky_bot() -> (usize, usize) {
         .to_owned();
     return coord;
 }
-fn deeper(mut board: Board, player: &Player) -> (usize, usize) {
+fn deeper(_board: Board, _player: &Player) -> (usize, usize) {
     let best_move: (usize, usize) = (0, 0);
     return best_move;
 }
 
-fn ask_bot(board: Board, player: &Player) -> String {
+fn ask_bot(_board: Board, _player: &Player) -> String {
     let moove = janky_bot();
     // let moove = deeper(game_manager, player);
     return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
