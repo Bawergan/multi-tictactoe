@@ -1,13 +1,16 @@
 use std::io;
-
-use game::{Player, PlayerType};
 use rand::seq::SliceRandom;
+use crate::player::{Player, PlayerType};
 
 mod game;
+mod board;
+mod cell;
+mod r#move;
+mod player;
 
 fn main() {
     let players = vec![Player::new(1, 'X'), Player::new_bot(2, 'O')];
-    let game_manager = game::GameManager::new((4, 4), &players);
+    let game_manager = game::Game::new((4, 4), &players);
     game_loop(game_manager, &players);
 }
 #[derive(PartialEq, Debug)]
@@ -16,14 +19,14 @@ enum GameState {
     Closing,
 }
 
-fn game_loop(mut game_manager: game::GameManager, players: &Vec<Player>) {
+fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
     let mut game_state = GameState::Running;
     let mut move_counter = 0;
     loop {
         let player = &players[move_counter % players.len()];
         move_counter += 1;
         loop {
-            let input = if player.p_type == PlayerType::terminal {
+            let input = if player.p_type == PlayerType::Terminal {
                 ask_terminal()
             } else {
                 ask_bot(game_manager.clone(), &player)
@@ -80,12 +83,12 @@ fn janky_bot() -> (usize, usize) {
         .to_owned();
     return coord;
 }
-fn deeper(mut game_manager: game::GameManager, player: &Player) -> (usize, usize){
+fn deeper(mut game_manager: game::Game, player: &Player) -> (usize, usize){
     let best_move: (usize, usize) = (0,0);
     return best_move;
 }
 
-fn ask_bot(game_manager: game::GameManager, player: &Player) -> String {
+fn ask_bot(game_manager: game::Game, player: &Player) -> String {
     // let moove = janky_bot();
     let moove = deeper(game_manager, player);
     return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
