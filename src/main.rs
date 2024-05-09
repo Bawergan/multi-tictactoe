@@ -1,17 +1,17 @@
-use crate::player::{Player, PlayerType};
+use crate::{r#move::Move, player::{Player, PlayerType}};
+use board::Board;
 use rand::seq::SliceRandom;
 use std::io::{stdin, stdout, Write};
 
 mod board;
 mod cell;
-mod game;
 mod r#move;
 mod player;
 
 fn main() {
     let players = vec![Player::new(1, 'X'), Player::new_bot(2, 'O')];
-    let game_manager = game::Game::new((4, 4), &players);
-    game_loop(game_manager, &players);
+    let board = Board::new(4, 4, players.to_owned());
+    game_loop(board, &players);
 }
 #[derive(PartialEq, Debug)]
 enum GameState {
@@ -19,7 +19,7 @@ enum GameState {
     Closing,
 }
 
-fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
+fn game_loop(mut board: Board, players: &Vec<Player>) {
     let mut game_state = GameState::Running;
     let mut move_counter = 0;
     loop {
@@ -29,7 +29,7 @@ fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
             let input: String = if player.p_type == PlayerType::Terminal {
                 input(">>>")
             } else {
-                ask_bot(game_manager.clone(), &player)
+                ask_bot(board.clone(), &player)
             };
             match input_handler(input) {
                 Ok(input) => match input {
@@ -40,7 +40,7 @@ fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
                         }
                     }
                     Command::ChooseCell(coord) => {
-                        match game_manager.make_move(coord, *player, move_counter) {
+                        match board.make_move(Move::new(coord, *player, move_counter)) {
                             Ok(_) => break,
                             Err(err) => println!("{:?}", err),
                         }
@@ -58,17 +58,14 @@ fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
             break;
         }
 
-        game_manager.draw_board();
-        match game_manager.game_win_draw_checker(player.id) {
-            game::WinDraw::Win => {
-                println!("{:?}, won!", player);
-                break;
-            }
-            game::WinDraw::Draw => {
-                println!("Draw!");
-                break;
-            }
-            game::WinDraw::Noting => {}
+        println!("{}", board);
+        if board.check_player_for_win(*player){
+            println!("{:?}, won!", player);
+            break;
+        }
+        if board.check_position_for_draw(){
+            println!("Draw!");
+            break;
         }
     }
 }
@@ -85,12 +82,12 @@ fn janky_bot() -> (usize, usize) {
         .to_owned();
     return coord;
 }
-fn deeper(mut game_manager: game::Game, player: &Player) -> (usize, usize) {
+fn deeper(mut board: Board, player: &Player) -> (usize, usize) {
     let best_move: (usize, usize) = (0, 0);
     return best_move;
 }
 
-fn ask_bot(game_manager: game::Game, player: &Player) -> String {
+fn ask_bot(board: Board, player: &Player) -> String {
     let moove = janky_bot();
     // let moove = deeper(game_manager, player);
     return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
@@ -109,7 +106,7 @@ fn input(prompt: impl std::fmt::Display) -> String {
 fn terminal_said_yes() -> bool {
     match input("y/N: ").trim().to_lowercase().as_str() {
         "y" | "yes" => return true,
-        // "n" | "no" => return false,
+        "n" | "no" => return false,
         _ => false,
     }
 }

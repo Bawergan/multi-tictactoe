@@ -1,60 +1,101 @@
 use crate::cell::Cell;
+use crate::player::Player;
 use crate::r#move::Move;
+impl core::fmt::Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        let mut board = vec![vec!['*'; self.x]; self.y];
+        let position = &self.position;
+        for i in 0..board.len() {
+            for j in 0..board[i].len() {
+                match position[i][j] {
+                    Cell::Empty => continue,
+                    Cell::Filed(player) => board[i][j] = player.skin,
+                }
+            }
+        }
+        for i in 0..board.len() {
+            for j in 0..board[i].len() {
+                write!(f, "{}", board[i][j])?;
+            }
+            writeln!(f, "")?;
+        }
+        writeln!(f)
+    }
+}
+#[derive(Debug)]
+pub enum GameError{
+    InvalidMove
+}
+
 #[derive(Clone)]
 pub struct Board {
     position: Vec<Vec<Cell>>,
     pub x: usize,
     pub y: usize,
-    player_count: usize,
+    players: Vec<Player>,
     move_history: Vec<Move>,
 }
+
 impl Board {
-    pub fn new(x: usize, y: usize, player_count: usize) -> Self {
+    pub fn new(x: usize, y: usize, players: Vec<Player>) -> Self {
         Board {
             position: vec![vec![Cell::Empty; x]; y],
             x,
             y,
-            player_count,
+            players,
             move_history: vec![],
         }
     }
     pub fn get_position(&self) -> &Vec<Vec<Cell>> {
         return &self.position;
     }
-    pub fn check_player_for_win(&self, player_id: usize) -> bool {
-        return check_rows_in_position(&self.position, 3, player_id)
-            || check_columns_in_position(&self.position, 3, player_id)
-            || check_diags_in_position(&self.position, 3, player_id);
+    pub fn check_player_for_win(&self, player: Player) -> bool {
+        return check_rows_in_position(&self.position, 3, player)
+            || check_columns_in_position(&self.position, 3, player)
+            || check_diags_in_position(&self.position, 3, player);
     }
-    pub fn is_valid_move(&self, coord: (usize, usize)) -> bool {
-        if coord.0 >= self.y || coord.1 >= self.x {
+    pub fn is_valid_move(&self, moove: &Move) -> bool {
+        if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
             return false;
         }
-        if self.position[coord.0][coord.1] != Cell::Empty {
+        if self.position[moove.coord.0][moove.coord.1] != Cell::Empty {
             return false;
         }
         return true;
     }
-    pub fn make_move(&mut self, moove: Move) {
-        if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
-            panic!("coord out of bounds");
+    pub fn make_move(&mut self, moove: Move) -> Result<(), GameError> {
+        if !self.is_valid_move(&moove) {
+            return Err(GameError::InvalidMove);
         }
+
         let mut new_position = vec![];
         for row in 0..self.position.len() {
             let mut new_row = vec![];
             for cell in 0..self.position[row].len() {
                 if row == moove.coord.0 && cell == moove.coord.1 {
-                    new_row.push(Cell::Filed(moove.player.id))
+                    new_row.push(Cell::Filed(moove.player))
                 } else {
                     new_row.push(self.position[row][cell])
                 }
             }
             new_position.push(new_row);
         }
+
         self.move_history.push(moove);
         self.position = new_position;
+        Ok(())
     }
-
+    pub fn get_empty_cells_coords(&self) -> Vec<(usize, usize)> {
+        let mut empty_cells_coords = vec![];
+        for i in 0..self.y {
+            for j in 0..self.x {
+                if self.position[i][j] == Cell::Empty {
+                    empty_cells_coords.push((i, j))
+                }
+            }
+        }
+        return empty_cells_coords;
+    }
     pub fn check_position_for_draw(&self) -> bool {
         for row in &self.position {
             for cell in row {
@@ -67,11 +108,11 @@ impl Board {
     }
 }
 
-fn check_rows_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player_id: usize) -> bool {
+fn check_rows_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
     for i in 0..position.len() {
         let mut score = 0;
         for j in 0..position.len() {
-            if position[i][j] != Cell::Filed(player_id) {
+            if position[i][j] != Cell::Filed(player) {
                 score = 0;
                 continue;
             }
@@ -84,11 +125,11 @@ fn check_rows_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player_id: 
     return false;
 }
 
-fn check_columns_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player_id: usize) -> bool {
+fn check_columns_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
     for i in 0..position.len() {
         let mut score = 0;
         for j in 0..position.len() {
-            if position[j][i] != Cell::Filed(player_id) {
+            if position[j][i] != Cell::Filed(player) {
                 score = 0;
                 continue;
             }
@@ -101,28 +142,28 @@ fn check_columns_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player_i
     return false;
 }
 
-fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player_id: usize) -> bool {
+fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
     let positions = devide_to_min_dim(position, win_req);
     for position in positions {
-        if check_main_diags(&position, player_id) {
+        if check_main_diags(&position, player) {
             return true;
         }
     }
     return false;
 }
 
-fn check_main_diags(position: &Vec<Vec<Cell>>, player_id: usize) -> bool {
+fn check_main_diags(position: &Vec<Vec<Cell>>, player: Player) -> bool {
     let mut first = true;
     let mut second: bool = true;
     for i in 0..position.len() {
         for j in 0..position[i].len() {
             if i == j {
-                if position[i][j] != Cell::Filed(player_id) {
+                if position[i][j] != Cell::Filed(player) {
                     first = false;
                 }
             }
             if i == (position[i].len() - j - 1) {
-                if position[i][j] != Cell::Filed(player_id) {
+                if position[i][j] != Cell::Filed(player) {
                     second = false;
                 }
             }
@@ -190,13 +231,14 @@ mod check_player_for_win_modules {
     use super::*;
     #[test]
     fn check_rows_in_position_p_4x4() {
+        let p = Player::new(1, 'X');
         let positions = [
             vec![
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
@@ -205,10 +247,10 @@ mod check_player_for_win_modules {
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
@@ -217,10 +259,10 @@ mod check_player_for_win_modules {
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
@@ -229,243 +271,201 @@ mod check_player_for_win_modules {
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
             ],
             vec![
-                vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(0),
-                ],
+                vec![Cell::Filed(p), Cell::Filed(p), Cell::Filed(p), Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(0),
-                ],
+                vec![Cell::Filed(p), Cell::Filed(p), Cell::Filed(p), Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(0),
-                ],
+                vec![Cell::Filed(p), Cell::Filed(p), Cell::Filed(p), Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(0),
-                ],
+                vec![Cell::Filed(p), Cell::Filed(p), Cell::Filed(p), Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(0),
-                ],
+                vec![Cell::Filed(p), Cell::Filed(p), Cell::Filed(p), Cell::Empty],
             ],
             vec![
-                vec![
-                    Cell::Filed(0),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                ],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Filed(p), Cell::Filed(p)],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(0),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                ],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Filed(p), Cell::Filed(p)],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(0),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                ],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Filed(p), Cell::Filed(p)],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(0),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                ],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Filed(p), Cell::Filed(p)],
             ],
         ];
         for position in positions {
-            assert!(check_rows_in_position(&position, 3, 1))
+            assert!(check_rows_in_position(&position, 3, p))
         }
     }
     #[test]
     fn check_columnst_in_position_p_4x4() {
+        let p = Player::new(1, 'X');
         let positions = [
             vec![
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
             ],
             vec![
-                vec![Cell::Filed(0), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Filed(0), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(0), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(0)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
             ],
             vec![
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(0), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(0), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(0), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(0)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
         ];
         for position in positions {
-            assert!(check_columns_in_position(&position, 3, 1))
+            assert!(check_columns_in_position(&position, 3, p))
         }
     }
     #[test]
     fn devide_position_p_4x4() {
+        let p = Player::new(1, 'X');
+
         let empty_position = vec![vec![Cell::Empty; 3]; 3];
         let positions = vec![
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
             ],
             vec![
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
             ],
             vec![
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
             ],
             vec![
                 vec![
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
-                    Cell::Filed(1),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
+                    Cell::Filed(p),
                 ],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
             ],
         ];
         for id in 0..positions.len() {
@@ -474,92 +474,96 @@ mod check_player_for_win_modules {
     }
     #[test]
     fn check_main_diags_p_4x4() {
+        let p = Player::new(1, 'X');
+
         //4x4
         let positions = vec![
             vec![
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
             ],
         ];
         for position in positions {
-            assert!(check_main_diags(&position, 1))
+            assert!(check_main_diags(&position, p))
         }
     }
     #[test]
     fn check_diags_in_position_p_4x4() {
+        let p = Player::new(1, 'X');
+
         //4x4
         let positions = vec![
             vec![
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
             ],
             vec![
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
+                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
             ],
             vec![
                 vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(1)],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(1), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(1), Cell::Empty, Cell::Empty],
+                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
+                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
+                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
             ],
         ];
         for position in positions {
-            assert!(check_diags_in_position(&position, 3, 1));
+            assert!(check_diags_in_position(&position, 3, p));
         }
     }
 }
@@ -573,13 +577,16 @@ mod make_move_tests {
     #[test]
     fn fill_board_p_3x3() {
         let position3x3 = vec![vec![Cell::Empty; 3]; 3];
-        let mut board = Board::new(3, 3, 2);
+        let p = Player::new(1, 'X');
+        let mut board = Board::new(3, 3, vec![p]);
 
         let mut desired_pos = position3x3;
         for i in 0..3 {
             for j in 0..3 {
-                board.make_move(Move::new((i, j), Player::new(1, 'X'), 0));
-                desired_pos[i][j] = Cell::Filed(1);
+                board
+                    .make_move(Move::new((i, j), Player::new(1, 'X'), 0))
+                    .expect("invalid move shoud be valid");
+                desired_pos[i][j] = Cell::Filed(p);
 
                 assert_eq!(board.position, desired_pos);
             }

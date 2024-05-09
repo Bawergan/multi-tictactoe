@@ -3,8 +3,7 @@ pub enum PlayerType {
     Bot,
     Terminal,
 }
-
-#[derive(Clone, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub struct Player {
     pub id: usize,
     pub skin: char,
