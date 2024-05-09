@@ -1,10 +1,10 @@
-use std::io;
-use rand::seq::SliceRandom;
 use crate::player::{Player, PlayerType};
+use rand::seq::SliceRandom;
+use std::io::{stdin, stdout, Write};
 
-mod game;
 mod board;
 mod cell;
+mod game;
 mod r#move;
 mod player;
 
@@ -26,8 +26,8 @@ fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
         let player = &players[move_counter % players.len()];
         move_counter += 1;
         loop {
-            let input = if player.p_type == PlayerType::Terminal {
-                ask_terminal()
+            let input: String = if player.p_type == PlayerType::Terminal {
+                input(">>>")
             } else {
                 ask_bot(game_manager.clone(), &player)
             };
@@ -39,10 +39,12 @@ fn game_loop(mut game_manager: game::Game, players: &Vec<Player>) {
                             game_state = GameState::Closing
                         }
                     }
-                    Command::ChooseCell(coord) => match game_manager.make_move(coord, *player, move_counter) {
-                        Ok(_) => break,
-                        Err(err) => println!("{:?}", err),
-                    },
+                    Command::ChooseCell(coord) => {
+                        match game_manager.make_move(coord, *player, move_counter) {
+                            Ok(_) => break,
+                            Err(err) => println!("{:?}", err),
+                        }
+                    }
                 },
                 Err(err) => match err {
                     InputError::Error(msg) => println!("Err: {msg}"),
@@ -83,33 +85,33 @@ fn janky_bot() -> (usize, usize) {
         .to_owned();
     return coord;
 }
-fn deeper(mut game_manager: game::Game, player: &Player) -> (usize, usize){
-    let best_move: (usize, usize) = (0,0);
+fn deeper(mut game_manager: game::Game, player: &Player) -> (usize, usize) {
+    let best_move: (usize, usize) = (0, 0);
     return best_move;
 }
 
 fn ask_bot(game_manager: game::Game, player: &Player) -> String {
-    // let moove = janky_bot();
-    let moove = deeper(game_manager, player);
+    let moove = janky_bot();
+    // let moove = deeper(game_manager, player);
     return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
 }
-fn ask_terminal() -> String {
-    let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
-    return input;
+
+fn input(prompt: impl std::fmt::Display) -> String {
+    let mut s = String::new();
+    print!("{}", prompt);
+    let _ = stdout().flush();
+    stdin()
+        .read_line(&mut s)
+        .expect("Did not enter a correct string");
+    s
 }
+
 fn terminal_said_yes() -> bool {
-    let mut counter: u8 = 0;
-    while counter < 3 {
-        match ask_terminal().trim().to_lowercase().as_str() {
-            "y" | "yes" => return true,
-            "n" | "no" => return false,
-            _ => counter += 1,
-        }
+    match input("y/N: ").trim().to_lowercase().as_str() {
+        "y" | "yes" => return true,
+        // "n" | "no" => return false,
+        _ => false,
     }
-    return false;
 }
 pub enum InputError {
     Error(String),
