@@ -67,9 +67,8 @@ impl Lobby {
                         SKINS[self.players.len() + 1],
                     )]),
                     LobbyCommand::RemoveBot => {
-                        let mut id = 0;
                         match self.players.iter().find(|p| p.p_type == PlayerType::Bot) {
-                            Some(v) => id = v.id,
+                            Some(v) => _ = self.players.remove( v.id-1),
                             None => println!("No bot left!"),
                         }
                     }
