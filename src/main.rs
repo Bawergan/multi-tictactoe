@@ -1,14 +1,18 @@
-use crate::{r#move::Move, player::{Player, PlayerType}};
+use crate::{
+    player::{Player, PlayerType},
+    r#move::Move,
+};
 use board::Board;
 use rand::seq::SliceRandom;
 use std::io::{stdin, stdout, Write};
-
 mod board;
 mod cell;
 mod r#move;
 mod player;
+mod utils;
 
 fn main() {
+    println!("type help to list all commands");
     let players = vec![Player::new(1, 'X'), Player::new_bot(2, 'O')];
     let board = Board::new(4, 4, players.to_owned());
     game_loop(board, &players);
@@ -18,8 +22,10 @@ enum GameState {
     Running,
     Closing,
 }
-
 fn game_loop(mut board: Board, players: &Vec<Player>) {
+    println!("game started");
+    print!("{board}");
+
     let mut game_state = GameState::Running;
     let mut move_counter = 0;
     loop {
@@ -45,6 +51,7 @@ fn game_loop(mut board: Board, players: &Vec<Player>) {
                             Err(err) => println!("{:?}", err),
                         }
                     }
+                    Command::Help => println!("{}", utils::HELP_MESSAGE),
                 },
                 Err(err) => match err {
                     InputError::Error(msg) => println!("Err: {msg}"),
@@ -59,11 +66,11 @@ fn game_loop(mut board: Board, players: &Vec<Player>) {
         }
 
         println!("{}", board);
-        if board.check_player_for_win(*player){
+        if board.check_player_for_win(*player) {
             println!("{:?}, won!", player);
             break;
         }
-        if board.check_position_for_draw(){
+        if board.check_position_for_draw() {
             println!("Draw!");
             break;
         }
@@ -114,12 +121,14 @@ pub enum InputError {
     Error(String),
 }
 enum Command {
+    Help,
     Exit,
     ChooseCell((usize, usize)),
 }
 fn input_handler(input: String) -> Result<Command, InputError> {
     let command = input.trim().split(' ').collect::<Vec<_>>();
     match command[0] {
+        "help" => Ok(Command::Help),
         "exit" => Ok(Command::Exit),
         "mk" => {
             let mut coord: (usize, usize) = (0, 0);
@@ -146,3 +155,4 @@ fn input_handler(input: String) -> Result<Command, InputError> {
         _ => Err(InputError::Error("Command not found".to_string())),
     }
 }
+

@@ -1,6 +1,7 @@
 use crate::cell::Cell;
 use crate::player::Player;
 use crate::r#move::Move;
+
 impl core::fmt::Display for Board {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut board = vec![vec!['*'; self.x]; self.y];
@@ -13,13 +14,15 @@ impl core::fmt::Display for Board {
                 }
             }
         }
+        writeln!(f, "  0123\n")?;
         for i in 0..board.len() {
+            write!(f, "{i} ")?;
             for j in 0..board[i].len() {
                 write!(f, "{}", board[i][j])?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
         }
-        writeln!(f)
+        write!(f, "")
     }
 }
 #[derive(Debug)]

@@ -1,0 +1,1 @@
+pub const HELP_MESSAGE: &str = "mk X Y - to make a move\nexit - to exit\nhelp - to show this message";
