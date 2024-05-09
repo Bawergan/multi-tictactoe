@@ -184,11 +184,12 @@ fn devide_position(position: &Vec<Vec<Cell>>) -> Vec<Vec<Vec<Cell>>> {
     return vec![first, second, third, fourth];
 }
 
+// fn NAME + p/n/pn => positie results, negative results and both + board size
 #[cfg(test)]
-mod position {
+mod check_player_for_win_modules {
     use super::*;
     #[test]
-    fn check_rows_in_position_fn_test_only_positive() {
+    fn check_rows_in_position_p_4x4() {
         let positions = [
             vec![
                 vec![
@@ -339,7 +340,7 @@ mod position {
         }
     }
     #[test]
-    fn check_columnst_in_position_fn_test_only_positive() {
+    fn check_columnst_in_position_p_4x4() {
         let positions = [
             vec![
                 vec![Cell::Filed(1), Cell::Empty, Cell::Empty, Cell::Empty],
@@ -419,7 +420,7 @@ mod position {
         }
     }
     #[test]
-    fn devide_position_fn_testing() {
+    fn devide_position_p_4x4() {
         let empty_position = vec![vec![Cell::Empty; 3]; 3];
         let positions = vec![
             vec![
@@ -472,7 +473,7 @@ mod position {
         }
     }
     #[test]
-    fn check_main_diags_fn_testing_only_positive() {
+    fn check_main_diags_p_4x4() {
         //4x4
         let positions = vec![
             vec![
@@ -493,7 +494,7 @@ mod position {
         }
     }
     #[test]
-    fn check_diags_in_position_fn_testing_only_positive() {
+    fn check_diags_in_position_p_4x4() {
         //4x4
         let positions = vec![
             vec![
@@ -564,13 +565,13 @@ mod position {
 }
 
 #[cfg(test)]
-mod board {
+mod make_move_tests {
     use crate::{cell::Cell, player::Player, r#move::Move};
 
     use super::Board;
 
     #[test]
-    fn make_move_fn_tets() {
+    fn fill_board_p_3x3() {
         let position3x3 = vec![vec![Cell::Empty; 3]; 3];
         let mut board = Board::new(3, 3, 2);
 
