@@ -58,7 +58,7 @@ impl Board {
     pub fn check_player_for_win(&self, player: Player) -> bool {
         return check_rows_in_position(&self.position, 3, player)
             || check_columns_in_position(&self.position, 3, player)
-            || check_diags_in_position_new(&self.position, 3, player);
+            || check_diags_in_position(&self.position, 3, player);
     }
     pub fn is_valid_move(&self, moove: &Move) -> bool {
         if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
@@ -114,7 +114,7 @@ impl Board {
     }
 }
 
-fn check_diags_in_position_new(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
+fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
     for i in 0..(position.len() + 1 - win_req) {
         for j in 0..((position[i].len() + 1) / 2) {
             let mut score = 0;
@@ -188,89 +188,6 @@ fn check_columns_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: 
         }
     }
     return false;
-}
-
-fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
-    let positions = devide_to_min_dim(position, win_req);
-    for position in positions {
-        if check_main_diags(&position, player) {
-            return true;
-        }
-    }
-    return false;
-}
-
-fn check_main_diags(position: &Vec<Vec<Cell>>, player: Player) -> bool {
-    let mut first = true;
-    let mut second: bool = true;
-    for i in 0..position.len() {
-        for j in 0..position[i].len() {
-            if i == j {
-                if position[i][j] != Cell::Filed(player) {
-                    first = false;
-                }
-            }
-            if i == (position[i].len() - j - 1) {
-                if position[i][j] != Cell::Filed(player) {
-                    second = false;
-                }
-            }
-        }
-    }
-    return first || second;
-}
-
-fn devide_to_min_dim(position: &Vec<Vec<Cell>>, min_dim: usize) -> Vec<Vec<Vec<Cell>>> {
-    let mut devided_positions = vec![position.to_owned()];
-
-    while devided_positions[0].len() > min_dim {
-        let mut new_devided_positions = vec![];
-        for position in &devided_positions {
-            new_devided_positions.append(&mut devide_position(position))
-        }
-
-        devided_positions.clear();
-        devided_positions.append(&mut new_devided_positions);
-    }
-    return devided_positions;
-}
-
-fn devide_position(position: &Vec<Vec<Cell>>) -> Vec<Vec<Vec<Cell>>> {
-    let mut first = position[0..(position.len() - 1)].to_vec();
-    for i in 0..first.len() {
-        let a = first[i].len();
-        first[i].remove(a - 1);
-    }
-    //0000    0001
-    //0000 => 0001
-    //0000    0001
-    //0000    1111
-    let mut second = position[0..(position.len() - 1)].to_vec();
-    for i in 0..second.len() {
-        second[i].remove(0);
-    }
-    //0000    1000
-    //0000 => 1000
-    //0000    1000
-    //0000    1111
-    let mut third = position[1..position.len()].to_vec();
-    for i in 0..third.len() {
-        let a = third[i].len();
-        third[i].remove(a - 1);
-    }
-    //0000    1111
-    //0000 => 0001
-    //0000    0001
-    //0000    0001
-    let mut fourth = position[1..position.len()].to_vec();
-    for i in 0..fourth.len() {
-        fourth[i].remove(0);
-    }
-    //0000    1111
-    //0000 => 1000
-    //0000    1000
-    //0000    1000
-    return vec![first, second, third, fourth];
 }
 
 // fn NAME + p/n/pn => positie results, negative results and both + board size
@@ -466,84 +383,6 @@ mod check_player_for_win_modules {
         }
     }
     #[test]
-    fn devide_position_p_4x4() {
-        let p = Player::new(1, 'X');
-
-        let empty_position = vec![vec![Cell::Empty; 3]; 3];
-        let positions = vec![
-            vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-                vec![
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                ],
-            ],
-            vec![
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                ],
-            ],
-            vec![
-                vec![
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                ],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-            ],
-            vec![
-                vec![
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                    Cell::Filed(p),
-                ],
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-            ],
-        ];
-        for id in 0..positions.len() {
-            assert_eq!(devide_position(&positions[id])[id], empty_position)
-        }
-    }
-    #[test]
-    fn check_main_diags_p_4x4() {
-        let p = Player::new(1, 'X');
-
-        //4x4
-        let positions = vec![
-            vec![
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-            ],
-            vec![
-                vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Filed(p)],
-                vec![Cell::Empty, Cell::Empty, Cell::Filed(p), Cell::Empty],
-                vec![Cell::Empty, Cell::Filed(p), Cell::Empty, Cell::Empty],
-                vec![Cell::Filed(p), Cell::Empty, Cell::Empty, Cell::Empty],
-            ],
-        ];
-        for position in positions {
-            assert!(check_main_diags(&position, p))
-        }
-    }
-    #[test]
     fn check_diags_in_position_p_4x4() {
         let p = Player::new(1, 'X');
 
@@ -613,7 +452,7 @@ mod check_player_for_win_modules {
         let mut counter = 0;
         for position in positions {
             assert!(
-                check_diags_in_position_new(&position, 3, p),
+                check_diags_in_position(&position, 3, p),
                 "position {}",
                 counter
             );
