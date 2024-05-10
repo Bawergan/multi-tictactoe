@@ -1,10 +1,7 @@
 use crate::{cell::Cell, player::Player};
 use once_cell::sync::Lazy;
-//this file will be a mess
-//untill I prove fnctions with tests
-//focused on elimination of false positive results
-//and multiple board sizes
-//and multiple win_req values.
+
+//this file will be a mess for now.
 pub fn check_every_element(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
     let max_len = position.len().max(position[0].len());
     for i in 0..max_len {
@@ -143,7 +140,10 @@ pub fn check_columns_in_position(
 //board size +
 #[cfg(test)]
 mod test {
-    use crate::cell::Cell;
+    use crate::{
+        board::{self, Board},
+        cell::Cell,
+    };
 
     use super::*;
     #[test]
@@ -428,7 +428,7 @@ mod test {
         let empty_vec = vec![Cell::Empty, Cell::Empty, Cell::Empty, Cell::Empty];
         let mut counter = 0;
         for mut position in POSITIONS.clone() {
-            for i in 0..6 {
+            for _i in 0..6 {
                 position.push(empty_vec.clone());
                 assert!(
                     check_every_element(&position, 3, P.clone()),
@@ -443,7 +443,7 @@ mod test {
     fn check_positions_fn_5x4_10x4_3() {
         let mut counter = 0;
         for mut position in POSITIONS.clone() {
-            for i in 0..6 {
+            for _i in 0..6 {
                 for j in 0..position.len() {
                     position[j].push(Cell::Empty);
                 }
@@ -453,6 +453,33 @@ mod test {
                     counter / 6
                 );
                 counter += 1;
+            }
+        }
+    }
+    #[test]
+    fn check_positions_fp_3x3_10x10() {
+        let upto = (10, 10);
+        for win_req in 3..5 {
+            for l in 0..upto.1 {
+                for k in 0..upto.0 {
+                    let mut position = vec![];
+                    for i in 0..upto.0 {
+                        let mut new_row = vec![];
+                        for j in 0..upto.1 {
+                            if (j + k) % win_req == 0 || (i + l) % win_req == 0 {
+                                new_row.push(Cell::Empty);
+                            } else {
+                                new_row.push(Cell::Empty)
+                            }
+                        }
+                        position.push(new_row);
+                    }
+                    assert!(
+                        !check_every_element(&position, win_req, *P),
+                        "position: {}",
+                        Board::new(position.len(), position[0].len())
+                    )
+                }
             }
         }
     }
