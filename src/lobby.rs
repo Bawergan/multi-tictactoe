@@ -1,5 +1,5 @@
 use crate::{
-    board::{Board, GameError},
+    board::{Board, BoardError},
     player::{Player, PlayerType},
     r#move::Move,
     utils,
@@ -82,7 +82,7 @@ impl Lobby {
             }
         }
     }
-    fn start_game(&mut self) -> Result<GameResult, GameError> {
+    fn start_game(&mut self) -> Result<GameResult, BoardError> {
         let mut game_state = GameState::Running;
         let mut board = Board::new(self.board_settings.0, self.board_settings.1);
         println!("game started");
