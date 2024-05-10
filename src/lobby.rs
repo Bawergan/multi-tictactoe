@@ -68,7 +68,7 @@ impl Lobby {
                     )]),
                     LobbyCommand::RemoveBot => {
                         match self.players.iter().find(|p| p.p_type == PlayerType::Bot) {
-                            Some(v) => _ = self.players.remove( v.id-1),
+                            Some(v) => _ = self.players.remove(v.id - 1),
                             None => println!("No bot left!"),
                         }
                     }
@@ -84,7 +84,7 @@ impl Lobby {
     }
     fn start_game(&mut self) -> Result<GameResult, BoardError> {
         let mut game_state = GameState::Running;
-        let mut board = Board::new(self.board_settings.0, self.board_settings.1);
+        let mut board = Board::new(self.board_settings.0, self.board_settings.1, 3);
         println!("game started");
         print!("{board}");
         let mut move_counter = 0;

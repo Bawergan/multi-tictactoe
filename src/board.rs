@@ -44,15 +44,17 @@ pub struct Board {
     pub x: usize,
     pub y: usize,
     move_history: Vec<Move>,
+    win_req: usize
 }
 
 impl Board {
-    pub fn new(x: usize, y: usize) -> Self {
+    pub fn new(x: usize, y: usize, win_req: usize) -> Self {
         Board {
             position: vec![vec![Cell::Empty; x]; y],
             x,
             y,
             move_history: vec![],
+            win_req
         }
     }
     pub fn get_position(&self) -> &Vec<Vec<Cell>> {
@@ -62,7 +64,7 @@ impl Board {
         // return check_rows_in_position(&self.position, 3, player)
         //     || check_columns_in_position(&self.position, 3, player)
         //     || check_diags_in_position(&self.position, 3, player);
-        check_every_element(&self.position, 3, player)
+        check_every_element(&self.position, self.win_req, player)
     }
     pub fn is_valid_move(&self, moove: &Move) -> bool {
         if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
@@ -128,7 +130,7 @@ mod make_move_tests {
     fn fill_board_fn_3x3() {
         let position3x3 = vec![vec![Cell::Empty; 3]; 3];
         let p = Player::new(1, 'X');
-        let mut board = Board::new(3, 3);
+        let mut board = Board::new(3, 3, 3);
 
         let mut desired_pos = position3x3;
         for i in 0..3 {
@@ -143,3 +145,80 @@ mod make_move_tests {
         }
     }
 }
+#[cfg(test)]
+mod other {
+    use crate::{board::P, cell::Cell, r#move::Move, player::Player};
+
+    use super::Board;
+
+    #[test]
+    fn check_position_for_draw_eefn_eefp_every_pos(){
+        for x in 3..10{
+            for y in 3..10{
+                let mut board = Board::new(x, y, 3);
+                for i in 0..board.y{
+                    for j in 0..board.x{
+                        _ = board.make_move(Move::new((i,j), Player::new(i+j, 'X'), i+j))
+                    }
+                }
+                assert!(board.check_position_for_draw(), "position: {}", board)
+            }
+        }
+        for x in 3..10{
+            for y in 3..10{
+                let mut board = Board::new(x, y, 3);
+                for i in 0..board.y{
+                    for j in 0..board.x -1{
+                        _ = board.make_move(Move::new((i,j), Player::new(i+j, 'X'), i+j))
+                    }
+                }
+                assert!(!board.check_position_for_draw(), "position: {}", board)
+            }
+        }
+    }
+    #[test]
+    fn is_valid_move_fp_fn_3x3(){
+        let mut board = Board::new(3, 3, 3);
+        assert!(!board.is_valid_move(&Move::new((3,0), *P, 0)));
+        assert!(!board.is_valid_move(&Move::new((0,3), *P, 0)));
+        assert!(board.is_valid_move(&Move::new((0,0), *P, 0)));
+        _ = board.make_move(Move::new((0,0), *P, 0));
+        assert!(!board.is_valid_move(&Move::new((0,0), *P, 0)));
+    }
+    #[test]
+    fn check_player_for_win_fp_fn_3x3(){
+        let mut board = Board::new(3, 3, 3);
+
+        assert!(!board.check_player_for_win(*P));
+        _ = board.make_move(Move::new((0,0), *P, 0));
+        _ = board.make_move(Move::new((0,1), *P, 1));
+        _ = board.make_move(Move::new((0,2), *P, 2));
+        assert!(board.check_player_for_win(*P))
+    }
+    #[test]
+    fn get_empty_cells_coords_fn_fp(){
+        let pos = vec![vec![Cell::Empty;3];3];
+        let mut empty_cells = vec![];
+        for i in 0..pos.len(){
+            for j in 0..pos[i].len(){
+                if pos[i][j] == Cell::Empty{
+                    empty_cells.push((i,j))
+                }
+            }
+        }
+        let mut board = Board::new(3, 3, 3);
+        assert_eq!(board.get_empty_cells_coords(), empty_cells);
+        _ = board.make_move(Move::new((0,1), *P, 0));
+        assert_ne!(board.get_empty_cells_coords(), empty_cells)
+    }
+    #[test]
+    fn get_position_fn_fp_3x3(){
+        let pos = vec![vec![Cell::Empty;3];3];
+        let mut board = Board::new(3, 3, 3);
+        assert_eq!(board.get_position(), &pos);
+        _ = board.make_move(Move::new((0,1), *P, 0));
+        assert_ne!(board.get_position(), &pos);
+    }
+}
+use once_cell::sync::Lazy;
+static P: Lazy<Player> = Lazy::new(|| Player::new(1, 'X'));

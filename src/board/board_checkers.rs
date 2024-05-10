@@ -477,7 +477,7 @@ mod test {
                     assert!(
                         !check_every_element(&position, win_req, *P),
                         "position: {}",
-                        Board::new(position.len(), position[0].len())
+                        Board::new(position.len(), position[0].len(), 3)
                     )
                 }
             }
