@@ -20,7 +20,7 @@ enum LobbyError {
 #[derive(PartialEq)]
 enum LobbyState {
     Waiting,
-    Plaing,
+    Running,
     Closing,
 }
 pub struct Lobby {
@@ -40,7 +40,7 @@ impl Lobby {
         self.players.append(&mut players)
     }
     pub fn is_game_running(&self) -> bool {
-        if self.lobby_state == LobbyState::Waiting {
+        if self.lobby_state == LobbyState::Running {
             return true;
         }
         false
@@ -63,8 +63,8 @@ impl Lobby {
                     },
                     LobbyCommand::ChangeBoardSize(s) => self.board_settings = (s.0, s.1),
                     LobbyCommand::AddBot => self.add_players(vec![Player::new_bot(
-                        self.players.len() + 1,
-                        SKINS[self.players.len() + 1],
+                        self.players.len(),
+                        SKINS[self.players.len()],
                     )]),
                     LobbyCommand::RemoveBot => {
                         match self.players.iter().find(|p| p.p_type == PlayerType::Bot) {
@@ -84,18 +84,21 @@ impl Lobby {
     }
     fn start_game(&mut self) -> Result<GameResult, BoardError> {
         let mut game_state = GameState::Running;
-        let mut board = Board::new(self.board_settings.0, self.board_settings.1, 3);
+        let mut board = Board::new(
+            self.board_settings.0,
+            self.board_settings.1,
+            3,
+            self.players.clone(),
+        );
         println!("game started");
         print!("{board}");
-        let mut move_counter = 0;
         loop {
-            let player = self.players[move_counter % self.players.len()];
-            move_counter += 1;
+            board.set_player();
             loop {
-                let input: String = if player.p_type == PlayerType::Terminal {
+                let input: String = if board.get_current_player().p_type == PlayerType::Terminal {
                     input(">>>")
                 } else {
-                    ask_bot(board.clone(), &player)
+                    ask_bot(board.clone())
                 };
                 match game_input_handler(input) {
                     Ok(input) => match input {
@@ -106,7 +109,7 @@ impl Lobby {
                             }
                         }
                         GameCommand::ChooseCell(coord) => {
-                            match board.make_move(Move::new(coord, player, move_counter)) {
+                            match board.make_move(Move::new(coord, board.get_current_player())) {
                                 Ok(_) => break,
                                 Err(err) => println!("{:?}", err),
                             }
@@ -126,9 +129,9 @@ impl Lobby {
             }
 
             println!("{}", board);
-            if board.check_player_for_win(player) {
-                println!("{:?}, won!", player);
-                return Ok(GameResult::Win(player));
+            if board.check_current_player_for_win() {
+                println!("{:?}, won!", board.get_current_player());
+                return Ok(GameResult::Win(board.get_current_player()));
             }
             if board.check_position_for_draw() {
                 println!("Draw!");
@@ -144,28 +147,41 @@ enum GameState {
     Closing,
     Waiting,
 }
-
-fn janky_bot() -> (usize, usize) {
-    let mut coord: (usize, usize) = (0, 0);
-    coord.0 = [0, 1, 2, 3]
+//plays random moves
+fn janky_bot(board: Board) -> (usize, usize) {
+    return board
+        .get_empty_cells_coords()
         .choose(&mut rand::thread_rng())
         .unwrap()
         .to_owned();
-    coord.1 = [0, 1, 2, 3]
-        .choose(&mut rand::thread_rng())
-        .unwrap()
-        .to_owned();
-    return coord;
 }
-fn deeper(_board: Board, _player: &Player) -> (usize, usize) {
-    let best_move: (usize, usize) = (0, 0);
-    return best_move;
+fn iter_search(mut board: Board, me: Player, max_dept: usize, mut depth:usize) -> (usize, usize){
+    let all_moves = board.get_empty_cells_coords();
+    let mut move_to_play = all_moves[0];
+    depth += 1;
+    
+    for coord in board.get_empty_cells_coords() {
+        _ = board.make_move(Move::new(coord, board.get_current_player()));
+        if board.check_current_player_for_win() && board.get_current_player() == me {
+            move_to_play = coord;
+        }
+        else if depth < max_dept{
+            move_to_play = iter_search(board.clone(), me, max_dept, depth)
+        }
+        _ = board.undo_move();
+    }
+    return move_to_play;
+}
+fn deeper(board: Board) -> (usize, usize) {
+    let me = board.get_current_player();
+    let move_to_play = iter_search(board.clone(), me, 5, 0);
+    return move_to_play;
 }
 
-fn ask_bot(_board: Board, _player: &Player) -> String {
-    let moove = janky_bot();
-    // let moove = deeper(game_manager, player);
-    return "mk ".to_string() + moove.0.to_string().as_str() + " " + moove.1.to_string().as_str();
+fn ask_bot(board: Board) -> String {
+    // let moove = janky_bot();
+    let moove = deeper(board);
+    return "mk ".to_string() + moove.1.to_string().as_str() + " " + moove.0.to_string().as_str();
 }
 
 fn input(prompt: impl std::fmt::Display) -> String {

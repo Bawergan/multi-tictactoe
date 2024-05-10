@@ -141,7 +141,7 @@ pub fn check_columns_in_position(
 #[cfg(test)]
 mod test {
     use crate::{
-        board::{self, Board},
+        board::{Board},
         cell::Cell,
     };
 
@@ -477,7 +477,7 @@ mod test {
                     assert!(
                         !check_every_element(&position, win_req, *P),
                         "position: {}",
-                        Board::new(position.len(), position[0].len(), 3)
+                        Board::new_for_testing(position.len(), position[0].len(), 3)
                     )
                 }
             }

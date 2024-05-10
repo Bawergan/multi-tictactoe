@@ -1,5 +1,4 @@
 use crate::player::Player;
-use board::Board;
 use lobby::Lobby;
 
 mod board;

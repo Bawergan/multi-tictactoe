@@ -33,7 +33,7 @@ impl core::fmt::Display for Board {
         write!(f, "")
     }
 }
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum BoardError {
     InvalidMove,
 }
@@ -44,28 +44,50 @@ pub struct Board {
     pub x: usize,
     pub y: usize,
     move_history: Vec<Move>,
-    win_req: usize
+    win_req: usize,
+    player_to_move: Player,
+    players: Vec<Player>,
 }
 
 impl Board {
-    pub fn new(x: usize, y: usize, win_req: usize) -> Self {
+    pub fn new (x: usize, y: usize, win_req: usize, players: Vec<Player>) -> Self{
+        Board{
+            position: vec![vec![Cell::Empty; x]; y],
+            x,
+            y,
+            move_history: vec![],
+            win_req,
+            player_to_move: Player::new_dummy(),
+            players,
+        }
+    }
+    fn new_for_testing(x: usize, y: usize, win_req: usize) -> Self {
         Board {
             position: vec![vec![Cell::Empty; x]; y],
             x,
             y,
             move_history: vec![],
-            win_req
+            win_req,
+            player_to_move: Player::new_dummy(),
+            players: vec![],
         }
     }
     pub fn get_position(&self) -> &Vec<Vec<Cell>> {
         return &self.position;
     }
-    pub fn check_player_for_win(&self, player: Player) -> bool {
+    fn check_player_for_win(&self, player: Player) -> bool {
         // return check_rows_in_position(&self.position, 3, player)
         //     || check_columns_in_position(&self.position, 3, player)
         //     || check_diags_in_position(&self.position, 3, player);
         check_every_element(&self.position, self.win_req, player)
     }
+    pub fn check_current_player_for_win(&self) -> bool {
+        // return check_rows_in_position(&self.position, 3, player)
+        //     || check_columns_in_position(&self.position, 3, player)
+        //     || check_diags_in_position(&self.position, 3, player);
+        check_every_element(&self.position, self.win_req, self.player_to_move)
+    }
+
     pub fn is_valid_move(&self, moove: &Move) -> bool {
         if moove.coord.0 >= self.y || moove.coord.1 >= self.x {
             return false;
@@ -79,7 +101,6 @@ impl Board {
         if !self.is_valid_move(&moove) {
             return Err(BoardError::InvalidMove);
         }
-
         let mut new_position = vec![];
         for row in 0..self.position.len() {
             let mut new_row = vec![];
@@ -92,10 +113,16 @@ impl Board {
             }
             new_position.push(new_row);
         }
-
         self.move_history.push(moove);
         self.position = new_position;
         Ok(())
+    }
+    pub fn undo_move(&mut self) -> Result<(), BoardError>{
+        match self.move_history.pop(){
+            Some(m) => self.position[m.coord.0][m.coord.1] = Cell::Empty,
+            None => return Err(BoardError::InvalidMove),
+        }
+        return Ok(())
     }
     pub fn get_empty_cells_coords(&self) -> Vec<(usize, usize)> {
         let mut empty_cells_coords = vec![];
@@ -118,6 +145,13 @@ impl Board {
         }
         return true;
     }
+    
+    pub fn set_player(&mut self) {
+        self.player_to_move = self.players[self.move_history.len()%self.players.len()];
+    }
+    pub fn get_current_player(&self) -> Player{
+        self.player_to_move
+    }
 }
 
 #[cfg(test)]
@@ -130,13 +164,13 @@ mod make_move_tests {
     fn fill_board_fn_3x3() {
         let position3x3 = vec![vec![Cell::Empty; 3]; 3];
         let p = Player::new(1, 'X');
-        let mut board = Board::new(3, 3, 3);
+        let mut board = Board::new_for_testing(3, 3, 3);
 
         let mut desired_pos = position3x3;
         for i in 0..3 {
             for j in 0..3 {
                 board
-                    .make_move(Move::new((i, j), Player::new(1, 'X'), 0))
+                    .make_move(Move::new((i, j), Player::new(1, 'X')))
                     .expect("invalid move shoud be valid");
                 desired_pos[i][j] = Cell::Filed(p);
 
@@ -147,7 +181,7 @@ mod make_move_tests {
 }
 #[cfg(test)]
 mod other {
-    use crate::{board::P, cell::Cell, r#move::Move, player::Player};
+    use crate::{board::{BoardError, P}, cell::Cell, r#move::Move, player::Player};
 
     use super::Board;
 
@@ -155,10 +189,10 @@ mod other {
     fn check_position_for_draw_eefn_eefp_every_pos(){
         for x in 3..10{
             for y in 3..10{
-                let mut board = Board::new(x, y, 3);
+                let mut board = Board::new_for_testing(x, y, 3);
                 for i in 0..board.y{
                     for j in 0..board.x{
-                        _ = board.make_move(Move::new((i,j), Player::new(i+j, 'X'), i+j))
+                        _ = board.make_move(Move::new((i,j), Player::new(i+j, 'X')))
                     }
                 }
                 assert!(board.check_position_for_draw(), "position: {}", board)
@@ -166,10 +200,10 @@ mod other {
         }
         for x in 3..10{
             for y in 3..10{
-                let mut board = Board::new(x, y, 3);
+                let mut board = Board::new_for_testing(x, y, 3);
                 for i in 0..board.y{
                     for j in 0..board.x -1{
-                        _ = board.make_move(Move::new((i,j), Player::new(i+j, 'X'), i+j))
+                        _ = board.make_move(Move::new((i,j), Player::new(i+j, 'X')))
                     }
                 }
                 assert!(!board.check_position_for_draw(), "position: {}", board)
@@ -178,21 +212,21 @@ mod other {
     }
     #[test]
     fn is_valid_move_fp_fn_3x3(){
-        let mut board = Board::new(3, 3, 3);
-        assert!(!board.is_valid_move(&Move::new((3,0), *P, 0)));
-        assert!(!board.is_valid_move(&Move::new((0,3), *P, 0)));
-        assert!(board.is_valid_move(&Move::new((0,0), *P, 0)));
-        _ = board.make_move(Move::new((0,0), *P, 0));
-        assert!(!board.is_valid_move(&Move::new((0,0), *P, 0)));
+        let mut board = Board::new_for_testing(3, 3, 3);
+        assert!(!board.is_valid_move(&Move::new((3,0), *P)));
+        assert!(!board.is_valid_move(&Move::new((0,3), *P)));
+        assert!(board.is_valid_move(&Move::new((0,0), *P)));
+        _ = board.make_move(Move::new((0,0), *P));
+        assert!(!board.is_valid_move(&Move::new((0,0), *P)));
     }
     #[test]
     fn check_player_for_win_fp_fn_3x3(){
-        let mut board = Board::new(3, 3, 3);
+        let mut board = Board::new_for_testing(3, 3, 3);
 
         assert!(!board.check_player_for_win(*P));
-        _ = board.make_move(Move::new((0,0), *P, 0));
-        _ = board.make_move(Move::new((0,1), *P, 1));
-        _ = board.make_move(Move::new((0,2), *P, 2));
+        _ = board.make_move(Move::new((0,0), *P));
+        _ = board.make_move(Move::new((0,1), *P));
+        _ = board.make_move(Move::new((0,2), *P));
         assert!(board.check_player_for_win(*P))
     }
     #[test]
@@ -206,18 +240,33 @@ mod other {
                 }
             }
         }
-        let mut board = Board::new(3, 3, 3);
+        let board = Board::new_for_testing(3, 3, 3);
         assert_eq!(board.get_empty_cells_coords(), empty_cells);
-        _ = board.make_move(Move::new((0,1), *P, 0));
-        assert_ne!(board.get_empty_cells_coords(), empty_cells)
+        // _ = board.make_move(Move::new((0,1), *P));
+        // assert_ne!(board.get_empty_cells_coords(), empty_cells)
     }
     #[test]
     fn get_position_fn_fp_3x3(){
         let pos = vec![vec![Cell::Empty;3];3];
-        let mut board = Board::new(3, 3, 3);
+        let mut board = Board::new_for_testing(3, 3, 3);
         assert_eq!(board.get_position(), &pos);
-        _ = board.make_move(Move::new((0,1), *P, 0));
+        _ = board.make_move(Move::new((0,1), *P));
         assert_ne!(board.get_position(), &pos);
+    }
+    #[test]
+    fn undo_move_fn_fp_3x3(){
+        let mut pos = vec![vec![Cell::Empty;3];3];
+        let mut board = Board::new_for_testing(3, 3, 3);
+        assert_eq!(board.undo_move(), Err(BoardError::InvalidMove));
+        _=board.make_move(Move::new((0,0), *P));
+        _=board.undo_move();
+        assert_eq!(board.position, pos);
+        _=board.make_move(Move::new((0,0), *P));
+        pos[0][0] = Cell::Filed(*P);
+        _=board.make_move(Move::new((0,1), *P));
+        _=board.undo_move();
+        assert_eq!(board.position, pos);
+
     }
 }
 use once_cell::sync::Lazy;

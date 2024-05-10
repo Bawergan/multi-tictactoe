@@ -25,4 +25,7 @@ impl Player {
             p_type: PlayerType::Bot,
         }
     }
+    pub fn new_dummy()->Self{
+        Player { id: 999, skin: ' ', p_type: PlayerType::Bot }
+    }
 }
