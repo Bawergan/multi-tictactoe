@@ -2,11 +2,11 @@
 pub enum PlayerType {
     Bot,
     Terminal,
-    JankyBot,
-    Deeper,
-    Deeperer,
-    Deeperest,
-    Martin,
+    // JankyBot,
+    // Deeper,
+    // Deeperer,
+    // Deeperest,
+    // Martin,
 }
 #[derive(PartialEq, Clone, Debug, Copy)]
 pub struct Player {
@@ -25,7 +25,7 @@ impl Player {
             score: 0,
         }
     }
-    pub fn new_custom(id: usize, skin: char, p_type: PlayerType) -> Self {
+    pub fn _new_custom(id: usize, skin: char, p_type: PlayerType) -> Self {
         Player {
             id,
             skin,
@@ -41,7 +41,7 @@ impl Player {
             score: 0,
         }
     }
-    pub fn new_dummy() -> Self {
+    pub fn _new_dummy() -> Self {
         Player {
             id: 999,
             skin: ' ',

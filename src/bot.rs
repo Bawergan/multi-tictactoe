@@ -3,19 +3,19 @@ use rand::seq::SliceRandom;
 
 pub fn ask_bot(board: Board) -> String {
     let moove = match board.get_current_player().p_type {
-        crate::player::PlayerType::Bot => deeper(board),
+        crate::player::PlayerType::Bot => deeperest(board),
         crate::player::PlayerType::Terminal => return "asas".to_string(),
-        crate::player::PlayerType::JankyBot => janky_bot(board),
-        crate::player::PlayerType::Martin => martin(board),
-        crate::player::PlayerType::Deeper => deeper(board),
-        crate::player::PlayerType::Deeperer => deeperer(board),
-        crate::player::PlayerType::Deeperest => deeperest(board),
+        // crate::player::PlayerType::JankyBot => janky_bot(board),
+        // crate::player::PlayerType::Martin => martin(board),
+        // crate::player::PlayerType::Deeper => deeper(board),
+        // crate::player::PlayerType::Deeperer => deeperer(board),
+        // crate::player::PlayerType::Deeperest => deeperest(board),
     };
 
     return "mk ".to_string() + moove.1.to_string().as_str() + " " + moove.0.to_string().as_str();
 }
 
-fn wining_bot(mut board: Board) -> (usize, usize) {
+fn _wining_bot(mut board: Board) -> (usize, usize) {
     match board.make_move(Move::new((0, 0), board.get_current_player())) {
         Ok(_) => return (0, 0),
         Err(_) => {}
@@ -31,14 +31,14 @@ fn wining_bot(mut board: Board) -> (usize, usize) {
     return (2, 2);
 }
 //plays random moves
-fn janky_bot(board: Board) -> (usize, usize) {
+fn _janky_bot(board: Board) -> (usize, usize) {
     return board
         .get_empty_cells_coords()
         .choose(&mut rand::thread_rng())
         .unwrap()
         .to_owned();
 }
-fn martin(mut board: Board) -> (usize, usize) {
+fn _martin(mut board: Board) -> (usize, usize) {
     let m = board.get_empty_cells_coords()[0];
     for m in board.get_empty_cells_coords() {
         _ = board.make_move(Move::new(m, board.get_current_player()));
@@ -49,7 +49,7 @@ fn martin(mut board: Board) -> (usize, usize) {
     }
     return m;
 }
-fn deeper(mut board: Board) -> (usize, usize) {
+fn _deeper(mut board: Board) -> (usize, usize) {
     for m in board.get_empty_cells_coords() {
         _ = board.make_move(Move::new(m, board.get_current_player()));
         //if you'll win, win
@@ -72,7 +72,7 @@ fn deeper(mut board: Board) -> (usize, usize) {
     //or just play the first one
     return board.get_empty_cells_coords()[0];
 }
-fn deeperer(mut board: Board) -> (usize, usize) {
+fn _deeperer(mut board: Board) -> (usize, usize) {
     let mut first = None;
     let mut second = None;
     let mut third = None;
@@ -112,7 +112,7 @@ fn deeperest_recursion(
     mut board: Board,
     depth: usize,
     max_depth: usize,
-    candidates: &mut [Option<(usize, usize)>; DEEPEREST_MAX_DEPTH],
+    candidates: &mut Vec<Option<(usize, usize)>>,
 ) {
     if depth >= max_depth {
         return;
@@ -141,10 +141,12 @@ fn deeperest_recursion(
         _ = board.undo_move();
     }
 }
-const DEEPEREST_MAX_DEPTH: usize = 4;
 fn deeperest(board: Board) -> (usize, usize) {
-    let mut candidates: [Option<(usize, usize)>; DEEPEREST_MAX_DEPTH] = [None; DEEPEREST_MAX_DEPTH];
-    _ = deeperest_recursion(board.clone(), 0, DEEPEREST_MAX_DEPTH, &mut candidates);
+    let u = board.get_empty_cells_coords().len() as f32;
+    let depth = ((1.5 / u).powf(1.0 / 2.0) * 16.0).max(2.0).min(10.0) as usize;
+    println!("{depth} {}", board.get_empty_cells_coords().len());
+    let mut candidates: Vec<Option<(usize, usize)>> = vec![None; depth];
+    _ = deeperest_recursion(board.clone(), 0, depth, &mut candidates);
     // println!("{:?}", candidates);
     for i in candidates {
         match i {
@@ -161,7 +163,7 @@ mod tests {
     #[test]
     fn obvius_positions_3x3() {
         let player1 = Player::new(1, 'X');
-        let player2 = Player::new_custom(2, 'O', crate::player::PlayerType::Deeper);
+        let player2 = Player::new_bot(2, 'O');
 
         let mut board = Board::new(3, 3, 3, [player1, player2].to_vec());
         _ = board.make_move(Move::new((0, 0), player1));

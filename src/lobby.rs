@@ -86,7 +86,13 @@ impl Lobby {
 
                     LobbyCommand::Help => println!("{}", LOBBY_HELP_MESSAGE),
                     LobbyCommand::StartGame => match self.start_game() {
-                        Ok(v) => println!("{:?}", v),
+                        Ok(v) => {
+                            println!("{:?}", v);
+                            println!("players:");
+                            for p in &self.players {
+                                println!("{:?} ", p)
+                            }
+                        }
                         Err(v) => println!("{:?}", v),
                     },
                     LobbyCommand::ChangeBoardSize(s) => self.board_settings = (s.0, s.1),
@@ -105,9 +111,6 @@ impl Lobby {
                     InputError::Error(msg) => println!("Err: {msg}"),
                 },
             };
-            for p in &self.players {
-                println!("{} score - {}", p.id, p.score)
-            }
             if self.players.iter().map(|f| f.score).sum::<usize>() > 3000 {
                 self.testing = false
             }
@@ -126,7 +129,6 @@ impl Lobby {
         );
         println!("game started");
         print!("{board}");
-        // board.set_player();
         loop {
             loop {
                 let input: String = if board.get_current_player().p_type == PlayerType::Terminal {
@@ -164,7 +166,6 @@ impl Lobby {
 
             println!("{}", board);
             if board.check_prev_player_for_win() {
-                println!("{:?}, won!", board.get_prev_player());
                 for i in 0..self.players.len() {
                     if self.players[i] == board.get_prev_player() {
                         self.players[i].score += 1;
@@ -173,7 +174,6 @@ impl Lobby {
                 return Ok(GameResult::Win(board.get_prev_player()));
             }
             if board.check_position_for_draw() {
-                println!("Draw!");
                 return Ok(GameResult::Draw);
             }
         }
@@ -184,7 +184,7 @@ impl Lobby {
 enum GameState {
     Running,
     Closing,
-    Waiting,
+    // Waiting,
 }
 
 fn terminal_input(prompt: impl std::fmt::Display) -> String {

@@ -56,84 +56,6 @@ pub fn check_every_element(position: &Vec<Vec<Cell>>, win_req: usize, player: Pl
     }
     return false;
 }
-pub fn check_diags_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
-    for i in 0..(position.len() + 1 - win_req) {
-        for j in 0..((position[i].len() + 1) / 2) {
-            let mut score = 0;
-            for k in 0..win_req {
-                if i + k >= position.len() || j + k >= position[i].len() {
-                    continue;
-                }
-                if position[i + k][j + k] == Cell::Filed(player) {
-                    score += 1;
-                    if score == win_req {
-                        return true;
-                    }
-                    continue;
-                }
-                score = 0;
-            }
-        }
-    }
-    for i in 0..(position.len() + 1 - win_req) {
-        for j in ((position[i].len()) / 2)..position[i].len() {
-            let mut score = 0;
-            for k in 0..win_req {
-                if i + k >= position.len() || j < k {
-                    continue;
-                }
-                if position[i + k][j - k] == Cell::Filed(player) {
-                    score += 1;
-                    if score == win_req {
-                        return true;
-                    }
-                    continue;
-                }
-                score = 0;
-            }
-        }
-    }
-    return false;
-}
-
-pub fn check_rows_in_position(position: &Vec<Vec<Cell>>, win_req: usize, player: Player) -> bool {
-    for i in 0..position.len() {
-        let mut score = 0;
-        for j in 0..position.len() {
-            if position[i][j] != Cell::Filed(player) {
-                score = 0;
-                // continue;
-            } else {
-                score += 1;
-                if score >= win_req {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-pub fn check_columns_in_position(
-    position: &Vec<Vec<Cell>>,
-    win_req: usize,
-    player: Player,
-) -> bool {
-    for i in 0..position.len() {
-        let mut score = 0;
-        for j in 0..position.len() {
-            if position[j][i] != Cell::Filed(player) {
-                score = 0;
-                continue;
-            }
-            score += 1;
-            if score >= win_req {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
 // fn NAME +
 //eefn/eefp - elliminates every false negative/false positive result +
@@ -247,7 +169,7 @@ mod test {
             ],
         ];
         for position in positions {
-            assert!(check_rows_in_position(&position, 3, p))
+            assert!(check_every_element(&position, 3, p))
         }
     }
     #[test]
@@ -328,7 +250,7 @@ mod test {
             ],
         ];
         for position in positions {
-            assert!(check_columns_in_position(&position, 3, p))
+            assert!(check_every_element(&position, 3, p))
         }
     }
     #[test]
@@ -400,11 +322,7 @@ mod test {
         ];
         let mut counter = 0;
         for position in positions {
-            assert!(
-                check_diags_in_position(&position, 3, p),
-                "position {}",
-                counter
-            );
+            assert!(check_every_element(&position, 3, p), "position {}", counter);
             counter += 1;
         }
     }
