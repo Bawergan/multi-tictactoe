@@ -1,10 +1,10 @@
 use crate::{
     board::{Board, BoardError},
+    bot::ask_bot,
     player::{Player, PlayerType},
     r#move::Move,
     utils,
 };
-use rand::seq::SliceRandom;
 use std::io::{stdin, stdout, Write};
 use std::usize;
 use utils::{LOBBY_HELP_MESSAGE, SKINS};
@@ -27,13 +27,15 @@ pub struct Lobby {
     players: Vec<Player>,
     lobby_state: LobbyState,
     board_settings: (usize, usize),
+    testing: bool,
 }
 impl Lobby {
     pub fn new() -> Self {
         Lobby {
             players: vec![],
             lobby_state: LobbyState::Waiting,
-            board_settings: (4, 4),
+            board_settings: (5, 5),
+            testing: false,
         }
     }
     pub fn add_players(&mut self, mut players: Vec<Player>) {
@@ -47,8 +49,34 @@ impl Lobby {
     }
     pub fn run(&mut self) {
         println!("welcome to lobby!");
+
         loop {
-            let input: String = input(">>>");
+            let mut f = false;
+            for p in &self.players {
+                if p.p_type == PlayerType::Terminal {
+                    f = true;
+                    break;
+                }
+            }
+            if !f && !self.testing {
+                println!("there is no terminal type player! you want to test?");
+                if terminal_said_yes() {
+                    self.testing = true;
+                } else {
+                    self.testing = false;
+                    self.add_players(vec![Player::new(
+                        self.players.len() + 1,
+                        SKINS[self.players.len()],
+                    )])
+                }
+            }
+            let mut input = String::new();
+            if self.testing {
+                self.players.rotate_left(1);
+                input = "start".to_string();
+            } else {
+                input = terminal_input(">>>");
+            }
             match lobby_input_handler(input) {
                 Ok(input) => match input {
                     LobbyCommand::Exit => {
@@ -63,7 +91,7 @@ impl Lobby {
                     },
                     LobbyCommand::ChangeBoardSize(s) => self.board_settings = (s.0, s.1),
                     LobbyCommand::AddBot => self.add_players(vec![Player::new_bot(
-                        self.players.len(),
+                        self.players.len() + 1,
                         SKINS[self.players.len()],
                     )]),
                     LobbyCommand::RemoveBot => {
@@ -77,6 +105,12 @@ impl Lobby {
                     InputError::Error(msg) => println!("Err: {msg}"),
                 },
             };
+            for p in &self.players {
+                println!("{} score - {}", p.id, p.score)
+            }
+            if self.players.iter().map(|f| f.score).sum::<usize>() > 3000 {
+                self.testing = false
+            }
             if self.lobby_state == LobbyState::Closing {
                 break;
             }
@@ -92,11 +126,11 @@ impl Lobby {
         );
         println!("game started");
         print!("{board}");
+        // board.set_player();
         loop {
-            board.set_player();
             loop {
                 let input: String = if board.get_current_player().p_type == PlayerType::Terminal {
-                    input(">>>")
+                    terminal_input(">>>")
                 } else {
                     ask_bot(board.clone())
                 };
@@ -129,9 +163,14 @@ impl Lobby {
             }
 
             println!("{}", board);
-            if board.check_current_player_for_win() {
-                println!("{:?}, won!", board.get_current_player());
-                return Ok(GameResult::Win(board.get_current_player()));
+            if board.check_prev_player_for_win() {
+                println!("{:?}, won!", board.get_prev_player());
+                for i in 0..self.players.len() {
+                    if self.players[i] == board.get_prev_player() {
+                        self.players[i].score += 1;
+                    }
+                }
+                return Ok(GameResult::Win(board.get_prev_player()));
             }
             if board.check_position_for_draw() {
                 println!("Draw!");
@@ -147,44 +186,8 @@ enum GameState {
     Closing,
     Waiting,
 }
-//plays random moves
-fn janky_bot(board: Board) -> (usize, usize) {
-    return board
-        .get_empty_cells_coords()
-        .choose(&mut rand::thread_rng())
-        .unwrap()
-        .to_owned();
-}
-fn iter_search(mut board: Board, me: Player, max_dept: usize, mut depth:usize) -> (usize, usize){
-    let all_moves = board.get_empty_cells_coords();
-    let mut move_to_play = all_moves[0];
-    depth += 1;
-    
-    for coord in board.get_empty_cells_coords() {
-        _ = board.make_move(Move::new(coord, board.get_current_player()));
-        if board.check_current_player_for_win() && board.get_current_player() == me {
-            move_to_play = coord;
-        }
-        else if depth < max_dept{
-            move_to_play = iter_search(board.clone(), me, max_dept, depth)
-        }
-        _ = board.undo_move();
-    }
-    return move_to_play;
-}
-fn deeper(board: Board) -> (usize, usize) {
-    let me = board.get_current_player();
-    let move_to_play = iter_search(board.clone(), me, 5, 0);
-    return move_to_play;
-}
 
-fn ask_bot(board: Board) -> String {
-    // let moove = janky_bot();
-    let moove = deeper(board);
-    return "mk ".to_string() + moove.1.to_string().as_str() + " " + moove.0.to_string().as_str();
-}
-
-fn input(prompt: impl std::fmt::Display) -> String {
+fn terminal_input(prompt: impl std::fmt::Display) -> String {
     let mut s = String::new();
     print!("{}", prompt);
     let _ = stdout().flush();
@@ -195,7 +198,7 @@ fn input(prompt: impl std::fmt::Display) -> String {
 }
 
 fn terminal_said_yes() -> bool {
-    match input("y/N: ").trim().to_lowercase().as_str() {
+    match terminal_input("y/N: ").trim().to_lowercase().as_str() {
         "y" | "yes" => return true,
         "n" | "no" => return false,
         _ => false,

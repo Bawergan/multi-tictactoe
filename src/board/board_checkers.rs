@@ -140,10 +140,7 @@ pub fn check_columns_in_position(
 //board size +
 #[cfg(test)]
 mod test {
-    use crate::{
-        board::{Board},
-        cell::Cell,
-    };
+    use crate::{board::Board, cell::Cell};
 
     use super::*;
     #[test]
@@ -484,7 +481,7 @@ mod test {
         }
     }
 }
-static P: Lazy<Player> = Lazy::new(|| Player::new(1, 'X'));
+static P: Lazy<Player> = Lazy::new(|| Player::new_bot(1, 'X'));
 
 static POSITIONS: Lazy<Vec<Vec<Vec<Cell>>>> = Lazy::new(|| {
     vec![

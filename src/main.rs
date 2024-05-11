@@ -2,6 +2,7 @@ use crate::player::Player;
 use lobby::Lobby;
 
 mod board;
+mod bot;
 mod cell;
 mod lobby;
 mod r#move;
@@ -10,7 +11,12 @@ mod utils;
 
 fn main() {
     println!("type help to list all commands");
-    let players = vec![Player::new(1, 'X'), Player::new_bot(2, 'O')];
+    let players = vec![
+        // Player::new_custom(1, 'M', player::PlayerType::Martin),
+        Player::new_custom(2, 'X', player::PlayerType::Deeper),
+        Player::new_custom(3, 'Y', player::PlayerType::Deeperer),
+        Player::new_custom(4, 'Z', player::PlayerType::Deeperest),
+    ];
 
     let mut lobby: Lobby = Lobby::new();
     lobby.add_players(players);
