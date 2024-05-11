@@ -1,5 +1,9 @@
-*will be a*
+
 ### tic tac toe game with
 * any board size
 * more than 2 players
-* smth else idk
+* smart bot
+
+coming soon
+* more settings in lobby
+* online mod
